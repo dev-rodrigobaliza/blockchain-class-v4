@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/ardanlabs/blockchain/foundation/blockchain/database"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -54,7 +55,7 @@ func run() error {
 		return fmt.Errorf("unable to get vrs from hex signature: %w", err)
 	}
 
-	fmt.Println("vrs:", v, r, s)
+	fmt.Println("VRS:", v, r, s)
 
 	//====================================================================================
 	// OVER THE WIRE
@@ -97,6 +98,24 @@ func run() error {
 	}
 
 	fmt.Println("PUB:", crypto.PubkeyToAddress(*publicKey).String())
+
+	//====================================================================================
+
+	fmt.Println("=========================== TX ===========================")
+
+	billTX, err := database.NewTx(1, 1, "0xF01813E4B85e178A83e29B8E7bF26BD830a25f32", "0xdd6B972ffcc631a62CAE1BB9d80b7ff429c8ebA4", 100, 1, nil)
+	if err != nil {
+		return fmt.Errorf("unable to create bill tx: %w", err)
+	}
+
+	fmt.Println("BTX:", billTX)
+
+	signedTX, err := billTX.Sign(privateKey)
+	if err != nil {
+		return fmt.Errorf("unable to sign bill tx: %w", err)
+	}
+
+	fmt.Println("STX:", signedTX)
 
 	return nil
 }
