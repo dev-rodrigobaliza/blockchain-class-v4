@@ -22,6 +22,11 @@ func main() {
 }
 
 func run() error {
+	privateKey, err := crypto.LoadECDSA("zblock/accounts/kennedy.ecdsa")
+	if err != nil {
+		return fmt.Errorf("unable to load private key: %w", err)
+	}
+
 	tx := Tx{
 		FromID: "Rodrigo",
 		ToID:   "Bill",
@@ -32,12 +37,8 @@ func run() error {
 		return fmt.Errorf("unable to marshal: %w", err)
 	}
 
-	privateKey, err := crypto.LoadECDSA("zblock/accounts/kennedy.ecdsa")
-	if err != nil {
-		return fmt.Errorf("unable to load private key: %w", err)
-	}
-
-	v := crypto.Keccak256(data)
+	stamp := []byte(fmt.Sprintf("\x19Ardan Signed Message:\n%d", len(data)))
+	v := crypto.Keccak256(stamp, data)
 
 	sig, err := crypto.Sign(v, privateKey)
 	if err != nil {
@@ -57,6 +58,36 @@ func run() error {
 	fmt.Println("PUB:", crypto.PubkeyToAddress(*publicKey).String())
 
 	//====================================================================================
+
+	tx = Tx{
+		FromID: "Rodrigo",
+		ToID:   "Gates",
+		Value:  1,
+	}
+	data, err = json.Marshal(tx)
+	if err != nil {
+		return fmt.Errorf("unable to marshal: %w", err)
+	}
+
+	stamp = []byte(fmt.Sprintf("\x19Ardan Signed Message:\n%d", len(data)))
+	v = crypto.Keccak256(stamp, data)
+
+	sig, err = crypto.Sign(v, privateKey)
+	if err != nil {
+		return fmt.Errorf("unable to sign: %w", err)
+	}
+
+	fmt.Println("SIG:", hexutil.Encode(sig))
+
+	//====================================================================================
+	// OVER THE WIRE
+
+	publicKey, err = crypto.SigToPub(v, sig)
+	if err != nil {
+		return fmt.Errorf("unable to get pub key: %w", err)
+	}
+
+	fmt.Println("PUB:", crypto.PubkeyToAddress(*publicKey).String())
 
 	return nil
 }
