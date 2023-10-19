@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -38,19 +40,26 @@ func run() error {
 	}
 
 	stamp := []byte(fmt.Sprintf("\x19Ardan Signed Message:\n%d", len(data)))
-	v := crypto.Keccak256(stamp, data)
+	digestHash := crypto.Keccak256(stamp, data)
 
-	sig, err := crypto.Sign(v, privateKey)
+	sig, err := crypto.Sign(digestHash, privateKey)
 	if err != nil {
 		return fmt.Errorf("unable to sign: %w", err)
 	}
 
 	fmt.Println("SIG:", hexutil.Encode(sig))
 
+	v, r, s, err := ToVRSFromHexSignature(hexutil.Encode(sig))
+	if err != nil {
+		return fmt.Errorf("unable to get vrs from hex signature: %w", err)
+	}
+
+	fmt.Println("vrs:", v, r, s)
+
 	//====================================================================================
 	// OVER THE WIRE
 
-	publicKey, err := crypto.SigToPub(v, sig)
+	publicKey, err := crypto.SigToPub(digestHash, sig)
 	if err != nil {
 		return fmt.Errorf("unable to get pub key: %w", err)
 	}
@@ -70,9 +79,9 @@ func run() error {
 	}
 
 	stamp = []byte(fmt.Sprintf("\x19Ardan Signed Message:\n%d", len(data)))
-	v = crypto.Keccak256(stamp, data)
+	digestHash = crypto.Keccak256(stamp, data)
 
-	sig, err = crypto.Sign(v, privateKey)
+	sig, err = crypto.Sign(digestHash, privateKey)
 	if err != nil {
 		return fmt.Errorf("unable to sign: %w", err)
 	}
@@ -82,7 +91,7 @@ func run() error {
 	//====================================================================================
 	// OVER THE WIRE
 
-	publicKey, err = crypto.SigToPub(v, sig)
+	publicKey, err = crypto.SigToPub(digestHash, sig)
 	if err != nil {
 		return fmt.Errorf("unable to get pub key: %w", err)
 	}
@@ -90,4 +99,17 @@ func run() error {
 	fmt.Println("PUB:", crypto.PubkeyToAddress(*publicKey).String())
 
 	return nil
+}
+
+func ToVRSFromHexSignature(sigStr string) (v, r, s *big.Int, err error) {
+	sig, err := hex.DecodeString(sigStr[2:])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	r = big.NewInt(0).SetBytes(sig[:32])
+	s = big.NewInt(0).SetBytes(sig[32:64])
+	v = big.NewInt(0).SetBytes([]byte{sig[64]})
+
+	return v, r, s, nil
 }
