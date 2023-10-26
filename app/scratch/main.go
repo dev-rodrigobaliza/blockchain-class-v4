@@ -108,7 +108,7 @@ func run() error {
 		return fmt.Errorf("unable to create bill tx: %w", err)
 	}
 
-	fmt.Println("BTX:", billTX)
+	fmt.Println("BTX:", billTX  )
 
 	signedTX, err := billTX.Sign(privateKey)
 	if err != nil {
